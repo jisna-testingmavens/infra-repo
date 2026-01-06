@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: microservice-3
+  template:
+    metadata:
+      labels:
+        app: microservice-3
+    spec:
+      containers:
+        - name: microservice-3
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/test-pipeline-repo:REPLACE_ME
+          ports:
+            - containerPort: 8000
