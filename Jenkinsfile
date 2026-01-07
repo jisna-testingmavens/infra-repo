@@ -38,7 +38,7 @@ Expected:
   helm/microservice/Chart.yaml
 
 Workspace contents:
-${sh(script: 'ls -l', returnStdout: true)}
+${sh(script: 'ls -R', returnStdout: true)}
 """
                     }
                 }
@@ -64,7 +64,7 @@ ${sh(script: 'ls -l', returnStdout: true)}
 
     post {
         success {
-            echo " All microservices deployed successfully"
+            echo "All microservices deployed successfully"
         }
         failure {
             echo "Infra deployment failed"
