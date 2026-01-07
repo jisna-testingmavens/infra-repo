@@ -4,21 +4,15 @@ pipeline {
     parameters {
         string(
             name: 'COMMIT_ID',
-            description: 'Docker image tag (git commit ID) to deploy'
+            description: 'Docker image tag (git commit ID)'
         )
     }
 
     stages {
 
-        stage("Checkout Repository") {
+        stage("Checkout") {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '.']],
-                    userRemoteConfigs: [[url: 'https://github.com/jisna-testingmavens/infra-repo.git']]
-                ])
+                checkout scm
             }
         }
 
@@ -26,7 +20,7 @@ pipeline {
             steps {
                 script {
                     if (!params.COMMIT_ID?.trim()) {
-                        error "COMMIT_ID must be provided by microservice pipeline"
+                        error "COMMIT_ID must be provided"
                     }
                     echo "Deploying image tag: ${params.COMMIT_ID}"
                 }
@@ -36,12 +30,16 @@ pipeline {
         stage("Validate Helm Chart") {
             steps {
                 script {
-                    def chartPath = "helm/microservice"
-                    if (!fileExists("${chartPath}/Chart.yaml")) {
-                        error "Helm chart not found! Checked path: ${chartPath}"
-                    } else {
-                        echo "Helm chart found at ${chartPath}"
-                        env.HELM_CHART_PATH = chartPath
+                    if (!fileExists('helm/microservice/Chart.yaml')) {
+                        error """
+Helm chart not found!
+
+Expected:
+  helm/microservice/Chart.yaml
+
+Workspace contents:
+${sh(script: 'ls -l', returnStdout: true)}
+"""
                     }
                 }
             }
@@ -49,13 +47,16 @@ pipeline {
 
         stage("Deploy Microservices") {
             steps {
-                script {
-                    def chartPath = env.HELM_CHART_PATH
-                    def services = ["microservice-1", "microservice-2", "microservice-3"]
-                    for (svc in services) {
-                        echo "Deploying ${svc} with image tag ${params.COMMIT_ID}..."
-                        sh "helm upgrade --install ${svc} ${chartPath} --set image.tag=${params.COMMIT_ID}"
-                    }
+                dir('helm/microservice') {
+                    sh '''
+                    set -e
+
+                    for svc in microservice-1 microservice-2 microservice-3; do
+                        echo "Deploying $svc with image tag ${COMMIT_ID}"
+                        helm upgrade --install $svc . \
+                          --set image.tag=${COMMIT_ID}
+                    done
+                    '''
                 }
             }
         }
@@ -63,10 +64,10 @@ pipeline {
 
     post {
         success {
-            echo "All microservices deployed successfully with image tag ${params.COMMIT_ID}."
+            echo " All microservices deployed successfully"
         }
         failure {
-            echo " Deployment failed. Check logs above for details."
+            echo "Infra deployment failed"
         }
     }
 }
