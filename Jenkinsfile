@@ -4,7 +4,7 @@ pipeline {
   parameters {
     string(
       name: 'COMMIT_ID',
-      description: 'Git commit ID used as Docker image tag'
+      description: 'Docker image tag (git commit ID)'
     )
   }
 
@@ -14,7 +14,7 @@ pipeline {
       steps {
         script {
           if (!params.COMMIT_ID?.trim()) {
-            error "COMMIT_ID is empty. Aborting deployment."
+            error "COMMIT_ID must be provided by microservice pipeline"
           }
         }
       }
