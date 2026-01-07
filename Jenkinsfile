@@ -9,10 +9,37 @@ pipeline {
     }
 
     environment {
+        // Default Helm chart path; will be validated dynamically
         HELM_CHART_PATH = "helm/microservice"
     }
 
     stages {
+
+        stage("Checkout Repository") {
+            steps {
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '.']],
+                        userRemoteConfigs: [[url: 'https://github.com/jisna-testingmavens/infra-repo.git']]
+                    ])
+                }
+            }
+        }
+
+        stage("List Workspace (Debug)") {
+            steps {
+                sh '''
+                echo "Current workspace: $PWD"
+                echo "Files in workspace:"
+                ls -l
+                echo "Files in helm folder:"
+                ls -l helm || echo "No helm folder found"
+                '''
+            }
+        }
 
         stage("Validate Input") {
             steps {
@@ -27,21 +54,21 @@ pipeline {
 
         stage("Validate Helm Chart") {
             steps {
-                sh '''
-                echo "Current workspace: $PWD"
-                if [ ! -d ${HELM_CHART_PATH} ]; then
-                    echo "Error: Helm chart folder ${HELM_CHART_PATH} not found!"
-                    exit 1
-                fi
-
-                if [ ! -f ${HELM_CHART_PATH}/Chart.yaml ]; then
-                    echo "Error: Chart.yaml missing in ${HELM_CHART_PATH}!"
-                    exit 1
-                fi
-
-                echo "Helm chart found at ${HELM_CHART_PATH}:"
-                ls -l ${HELM_CHART_PATH}
-                '''
+                script {
+                    // Adjust path if helm/microservice exists inside a subfolder
+                    if (!fileExists("${env.HELM_CHART_PATH}/Chart.yaml")) {
+                        // Try prepending repo folder name (in case Jenkins clones into subfolder)
+                        def possiblePath = "infra-repo/helm/microservice"
+                        if (fileExists("${possiblePath}/Chart.yaml")) {
+                            env.HELM_CHART_PATH = possiblePath
+                            echo "Adjusted HELM_CHART_PATH to ${env.HELM_CHART_PATH}"
+                        } else {
+                            error "Helm chart not found! Checked paths:\n- helm/microservice\n- infra-repo/helm/microservice"
+                        }
+                    } else {
+                        echo "Helm chart found at ${env.HELM_CHART_PATH}"
+                    }
+                }
             }
         }
 
