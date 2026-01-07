@@ -4,8 +4,12 @@ pipeline {
     parameters {
         string(
             name: 'COMMIT_ID',
-            description: 'Docker image tag (git commit ID)'
+            description: 'Docker image tag (git commit ID) to deploy'
         )
+    }
+
+    environment {
+        HELM_CHART_PATH = "helm/microservice"
     }
 
     stages {
@@ -21,31 +25,44 @@ pipeline {
             }
         }
 
-        stage("Deploy microservice-1") {
+        stage("Validate Helm Chart") {
             steps {
                 sh '''
-                helm upgrade --install microservice-1 helm/microservice \
-                    --set image.tag=${COMMIT_ID}
+                echo "Current workspace: $PWD"
+                if [ ! -d ${HELM_CHART_PATH} ]; then
+                    echo "Error: Helm chart folder ${HELM_CHART_PATH} not found!"
+                    exit 1
+                fi
+
+                if [ ! -f ${HELM_CHART_PATH}/Chart.yaml ]; then
+                    echo "Error: Chart.yaml missing in ${HELM_CHART_PATH}!"
+                    exit 1
+                fi
+
+                echo "Helm chart found at ${HELM_CHART_PATH}:"
+                ls -l ${HELM_CHART_PATH}
                 '''
             }
         }
 
-        stage("Deploy microservice-2") {
+        stage("Deploy Microservices") {
             steps {
                 sh '''
-                helm upgrade --install microservice-2 helm/microservice \
-                    --set image.tag=${COMMIT_ID}
+                for svc in microservice-1 microservice-2 microservice-3; do
+                    echo "Deploying $svc with image tag ${COMMIT_ID}..."
+                    helm upgrade --install $svc ${HELM_CHART_PATH} --set image.tag=${COMMIT_ID}
+                done
                 '''
             }
         }
+    }
 
-        stage("Deploy microservice-3") {
-            steps {
-                sh '''
-                helm upgrade --install microservice-3 helm/microservice \
-                    --set image.tag=${COMMIT_ID}
-                '''
-            }
+    post {
+        success {
+            echo " All microservices deployed successfully with image tag ${params.COMMIT_ID}."
+        }
+        failure {
+            echo " Deployment failed. Check logs above for details."
         }
     }
 }
