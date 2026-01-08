@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: microservice-1
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jisna-testingmavens/infra-repo.git
+    targetRevision: main
+    path: helm/microservice
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
