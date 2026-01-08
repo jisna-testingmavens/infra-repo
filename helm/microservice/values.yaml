@@ -1,8 +1,12 @@
+replicaCount: 1
+
 image:
   repository: 756827365110.dkr.ecr.us-east-1.amazonaws.com/test-pipeline-repo
-  tag: "latest"
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ecr-secret
 
 service:
   port: 8000
-
-replicaCount: 1
