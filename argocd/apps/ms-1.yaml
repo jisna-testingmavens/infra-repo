@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ms-1
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/jisna-testingmavens/infra-repo.git
+    targetRevision: main
+    path: helm/microservice
+    helm:
+      parameters:
+        - name: image.repository
+          value: 756827365110.dkr.ecr.us-east-1.amazonaws.com/test-pipeline-repo
+        - name: image.tag
+          value: e5d8045d1e9fa7970f755b7f36eea612eb1fdf52
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ms-dev
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
